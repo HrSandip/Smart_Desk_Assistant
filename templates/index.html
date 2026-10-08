@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Smart Desk Assistant</title>
+
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+
+    margin: 0;
+
+    font-family: Arial, sans-serif;
+
+    background: #f4f6f8;
+
+    min-height: 100vh;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+}
+
+
+.container {
+
+    width: 95%;
+
+    max-width: 700px;
+
+    background: white;
+
+    border-radius: 20px;
+
+    padding: 30px;
+
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.10);
+
+}
+
+
+h1 {
+
+    text-align: center;
+
+    margin-bottom: 5px;
+
+}
+
+
+.subtitle {
+
+    text-align: center;
+
+    color: #777;
+
+    margin-bottom: 25px;
+
+}
+
+
+/* MICROPHONE SELECTOR */
+
+.mic-section {
+
+    margin-bottom: 20px;
+
+}
+
+
+.mic-section label {
+
+    display: block;
+
+    font-weight: bold;
+
+    margin-bottom: 8px;
+
+}
+
+
+select {
+
+    width: 100%;
+
+    padding: 12px;
+
+    border-radius: 10px;
+
+    border: 1px solid #ccc;
+
+    font-size: 15px;
+
+}
+
+
+/* MIC BUTTON */
+
+.mic-area {
+
+    text-align: center;
+
+    margin: 25px 0;
+
+}
+
+
+#micButton {
+
+    width: 90px;
+
+    height: 90px;
+
+    border-radius: 50%;
+
+    border: none;
+
+    background: #4285f4;
+
+    color: white;
+
+    font-size: 38px;
+
+    cursor: pointer;
+
+}
+
+
+#micButton:hover {
+
+    transform: scale(1.05);
+
+}
+
+
+#micButton.recording {
+
+    background: #ea4335;
+
+    animation: pulse 1s infinite;
+
+}
+
+
+@keyframes pulse {
+
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.12);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+
+}
+
+
+#status {
+
+    text-align: center;
+
+    margin-top: 15px;
+
+    color: #555;
+
+}
+
+
+/* CHAT */
+
+.chat-box {
+
+    margin-top: 25px;
+
+    max-height: 300px;
+
+    overflow-y: auto;
+
+    padding: 10px;
+
+}
+
+
+.message {
+
+    padding: 12px 15px;
+
+    margin: 10px 0;
+
+    border-radius: 12px;
+
+}
+
+
+.user {
+
+    background: #e8f0fe;
+
+    text-align: right;
+
+}
+
+
+.assistant {
+
+    background: #f1f3f4;
+
+}
+
+
+/* TEXT INPUT */
+
+.input-area {
+
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 20px;
+
+}
+
+
+#textInput {
+
+    flex: 1;
+
+    padding: 14px;
+
+    border-radius: 12px;
+
+    border: 1px solid #ccc;
+
+    font-size: 16px;
+
+}
+
+
+#sendButton {
+
+    padding: 14px 20px;
+
+    border: none;
+
+    border-radius: 12px;
+
+    background: #4285f4;
+
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 16px;
+
+}
+
+
+#refreshButton {
+
+    width: 100%;
+
+    margin-top: 10px;
+
+    padding: 10px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: #eee;
+
+    cursor: pointer;
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+<h1>🎙️ Smart Desk Assistant</h1>
+
+<div class="subtitle">
+
+Voice + Text AI Assistant
+
+</div>
+
+
+<!-- MICROPHONE -->
+
+<div class="mic-section">
+
+<label for="microphone">
+
+Select Microphone
+
+</label>
+
+
+<select id="microphone">
+
+<option>
+
+Loading microphones...
+
+</option>
+
+</select>
+
+
+<button id="refreshButton">
+
+🔄 Refresh Microphones
+
+</button>
+
+</div>
+
+
+<!-- MICROPHONE BUTTON -->
+
+<div class="mic-area">
+
+<button id="micButton">
+
+🎤
+
+</button>
+
+
+<div id="status">
+
+Click the microphone and speak
+
+</div>
+
+</div>
+
+
+<!-- CHAT -->
+
+<div id="chatBox"
+     class="chat-box">
+</div>
+
+
+<!-- TEXT INPUT -->
+
+<div class="input-area">
+
+<input
+    id="textInput"
+    type="text"
+    placeholder="Type a message or question..."
+>
+
+
+<button id="sendButton">
+
+Send
+
+</button>
+
+</div>
+
+
+</div>
+
+
+<script>
+
+
+let audioContext = null;
+
+let microphoneStream = null;
+
+let source = null;
+
+let processor = null;
+
+let audioBuffers = [];
+
+let recording = false;
+
+
+/* ELEMENTS */
+
+const micButton =
+    document.getElementById("micButton");
+
+const microphoneSelect =
+    document.getElementById("microphone");
+
+const status =
+    document.getElementById("status");
+
+const chatBox =
+    document.getElementById("chatBox");
+
+const textInput =
+    document.getElementById("textInput");
+
+const sendButton =
+    document.getElementById("sendButton");
+
+const refreshButton =
+    document.getElementById("refreshButton");
+
+
+
+/* ------------------------------------------------
+   LOAD MICROPHONES
+------------------------------------------------ */
+
+async function loadMicrophones() {
+
+    try {
+
+        // Ask browser for microphone permission
+        const permissionStream =
+            await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
+
+        permissionStream
+            .getTracks()
+            .forEach(track => track.stop());
+
+
+        const devices =
+            await navigator.mediaDevices.enumerateDevices();
+
+
+        microphoneSelect.innerHTML = "";
+
+
+        const microphones =
+            devices.filter(
+                device =>
+                    device.kind === "audioinput"
+            );
+
+
+        if (microphones.length === 0) {
+
+            microphoneSelect.innerHTML =
+                "<option>No microphone found</option>";
+
+            return;
+
+        }
+
+
+        microphones.forEach(
+            (device, index) => {
+
+                const option =
+                    document.createElement("option");
+
+                option.value =
+                    device.deviceId;
+
+                option.textContent =
+                    device.label ||
+                    `Microphone ${index + 1}`;
+
+                microphoneSelect.appendChild(
+                    option
+                );
+
+            }
+        );
+
+
+        status.textContent =
+            microphones.length +
+            " microphone(s) detected.";
+
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        status.textContent =
+            "Microphone permission was denied.";
+
+    }
+
+}
+
+
+
+/* ------------------------------------------------
+   START RECORDING
+------------------------------------------------ */
+
+async function startRecording() {
+
+    try {
+
+        const deviceId =
+            microphoneSelect.value;
+
+
+        microphoneStream =
+            await navigator.mediaDevices.getUserMedia({
+
+                audio: {
+
+                    deviceId: {
+                        exact: deviceId
+                    },
+
+                    echoCancellation: true,
+
+                    noiseSuppression: true,
+
+                    autoGainControl: true,
+
+                    channelCount: 1
+
+                }
+
+            });
+
+
+        audioContext =
+            new AudioContext();
+
+
+        source =
+            audioContext.createMediaStreamSource(
+                microphoneStream
+            );
+
+
+        processor =
+            audioContext.createScriptProcessor(
+                4096,
+                1,
+                1
+            );
+
+
+        audioBuffers = [];
+
+
+        processor.onaudioprocess =
+            function(event) {
+
+                const data =
+                    event.inputBuffer
+                        .getChannelData(0);
+
+                audioBuffers.push(
+                    new Float32Array(data)
+                );
+
+            };
+
+
+        source.connect(processor);
+
+        processor.connect(
+            audioContext.destination
+        );
+
+
+        recording = true;
+
+
+        micButton.classList.add(
+            "recording"
+        );
+
+
+        micButton.textContent = "⏹";
+
+
+        status.textContent =
+            "Listening... Speak now";
+
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        status.textContent =
+            "Could not open selected microphone.";
+
+    }
+
+}
+
+
+
+/* ------------------------------------------------
+   STOP RECORDING
+------------------------------------------------ */
+
+async function stopRecording() {
+
+    recording = false;
+
+
+    micButton.classList.remove(
+        "recording"
+    );
+
+
+    micButton.textContent = "🎤";
+
+
+    status.textContent =
+        "Processing audio...";
+
+
+    if (processor) {
+
+        processor.disconnect();
+
+        processor = null;
+
+    }
+
+
+    if (source) {
+
+        source.disconnect();
+
+        source = null;
+
+    }
+
+
+    if (microphoneStream) {
+
+        microphoneStream
+            .getTracks()
+            .forEach(track =>
+                track.stop()
+            );
+
+    }
+
+
+    const sampleRate =
+        audioContext.sampleRate;
+
+
+    const wavBlob =
+        createWavFile(
+            audioBuffers,
+            sampleRate
+        );
+
+
+    await sendAudio(
+        wavBlob
+    );
+
+
+    audioBuffers = [];
+
+
+    await audioContext.close();
+
+    audioContext = null;
+
+}
+
+
+
+/* ------------------------------------------------
+   CREATE WAV FILE
+------------------------------------------------ */
+
+function createWavFile(
+    buffers,
+    sampleRate
+) {
+
+    let totalLength = 0;
+
+
+    buffers.forEach(
+        buffer => {
+
+            totalLength +=
+                buffer.length;
+
+        }
+    );
+
+
+    const samples =
+        new Float32Array(
+            totalLength
+        );
+
+
+    let offset = 0;
+
+
+    buffers.forEach(
+        buffer => {
+
+            samples.set(
+                buffer,
+                offset
+            );
+
+            offset +=
+                buffer.length;
+
+        }
+    );
+
+
+    const buffer =
+        new ArrayBuffer(
+            44 + samples.length * 2
+        );
+
+
+    const view =
+        new DataView(buffer);
+
+
+    writeString(
+        view,
+        0,
+        "RIFF"
+    );
+
+
+    view.setUint32(
+        4,
+        36 + samples.length * 2,
+        true
+    );
+
+
+    writeString(
+        view,
+        8,
+        "WAVE"
+    );
+
+
+    writeString(
+        view,
+        12,
+        "fmt "
+    );
+
+
+    view.setUint32(
+        16,
+        16,
+        true
+    );
+
+
+    view.setUint16(
+        20,
+        1,
+        true
+    );
+
+
+    view.setUint16(
+        22,
+        1,
+        true
+    );
+
+
+    view.setUint32(
+        24,
+        sampleRate,
+        true
+    );
+
+
+    view.setUint32(
+        28,
+        sampleRate * 2,
+        true
+    );
+
+
+    view.setUint16(
+        32,
+        2,
+        true
+    );
+
+
+    view.setUint16(
+        34,
+        16,
+        true
+    );
+
+
+    writeString(
+        view,
+        36,
+        "data"
+    );
+
+
+    view.setUint32(
+        40,
+        samples.length * 2,
+        true
+    );
+
+
+    let position = 44;
+
+
+    for (
+        let i = 0;
+        i < samples.length;
+        i++
+    ) {
+
+        let sample =
+            Math.max(
+                -1,
+                Math.min(
+                    1,
+                    samples[i]
+                )
+            );
+
+
+        sample =
+            sample < 0
+                ? sample * 0x8000
+                : sample * 0x7fff;
+
+
+        view.setInt16(
+            position,
+            sample,
+            true
+        );
+
+
+        position += 2;
+
+    }
+
+
+    return new Blob(
+        [view],
+        {
+            type: "audio/wav"
+        }
+    );
+
+}
+
+
+
+function writeString(
+    view,
+    offset,
+    string
+) {
+
+    for (
+        let i = 0;
+        i < string.length;
+        i++
+    ) {
+
+        view.setUint8(
+            offset + i,
+            string.charCodeAt(i)
+        );
+
+    }
+
+}
+
+
+
+/* ------------------------------------------------
+   SEND AUDIO TO PYTHON
+------------------------------------------------ */
+
+async function sendAudio(
+    wavBlob
+) {
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "audio",
+        wavBlob,
+        "recording.wav"
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/transcribe",
+                {
+
+                    method: "POST",
+
+                    body: formData
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!data.success) {
+
+            status.textContent =
+                data.error;
+
+            return;
+
+        }
+
+
+        addMessage(
+            data.text,
+            "user"
+        );
+
+
+        addMessage(
+            data.response,
+            "assistant"
+        );
+
+
+        speak(
+            data.response
+        );
+
+
+        status.textContent =
+            "Ready. Speak again.";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        status.textContent =
+            "Could not communicate with Python.";
+
+    }
+
+}
+
+
+
+/* ------------------------------------------------
+   TEXT CHAT
+------------------------------------------------ */
+
+async function sendText() {
+
+    const text =
+        textInput.value.trim();
+
+
+    if (!text) {
+
+        return;
+
+    }
+
+
+    addMessage(
+        text,
+        "user"
+    );
+
+
+    textInput.value = "";
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/process",
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body: JSON.stringify({
+
+                        command: text
+
+                    })
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        addMessage(
+            data.response,
+            "assistant"
+        );
+
+
+        speak(
+            data.response
+        );
+
+    }
+
+    catch (error) {
+
+        addMessage(
+            "Could not connect to the assistant.",
+            "assistant"
+        );
+
+    }
+
+}
+
+
+
+/* ------------------------------------------------
+   CHAT MESSAGE
+------------------------------------------------ */
+
+function addMessage(
+    text,
+    type
+) {
+
+    const message =
+        document.createElement("div");
+
+
+    message.className =
+        "message " + type;
+
+
+    message.textContent =
+        text;
+
+
+    chatBox.appendChild(
+        message
+    );
+
+
+    chatBox.scrollTop =
+        chatBox.scrollHeight;
+
+}
+
+
+
+/* ------------------------------------------------
+   TEXT TO SPEECH
+------------------------------------------------ */
+
+function speak(text) {
+
+    window.speechSynthesis.cancel();
+
+
+    const speech =
+        new SpeechSynthesisUtterance(
+            text
+        );
+
+
+    speech.lang = "en-IN";
+
+    speech.rate = 1;
+
+    speech.pitch = 1;
+
+
+    window.speechSynthesis.speak(
+        speech
+    );
+
+}
+
+
+
+/* ------------------------------------------------
+   BUTTONS
+------------------------------------------------ */
+
+micButton.addEventListener(
+    "click",
+    async () => {
+
+        if (!recording) {
+
+            await startRecording();
+
+        }
+
+        else {
+
+            await stopRecording();
+
+        }
+
+    }
+);
+
+
+sendButton.addEventListener(
+    "click",
+    sendText
+);
+
+
+textInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.key === "Enter") {
+
+            sendText();
+
+        }
+
+    }
+);
+
+
+refreshButton.addEventListener(
+    "click",
+    loadMicrophones
+);
+
+
+
+/* LOAD */
+
+loadMicrophones();
+
+</script>
+
+
+</body>
+
+</html>
